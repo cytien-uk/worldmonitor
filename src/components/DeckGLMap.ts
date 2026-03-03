@@ -1118,7 +1118,7 @@ export class DeckGLMap {
     }
 
     // Iran events layer
-    if (mapLayers.iranAttacks && this.iranEvents.length > 0) {
+    if (mapLayers.iranAttacks && this.iranEvents?.length > 0) {
       layers.push(this.createIranEventsLayer());
       layers.push(this.createGhostLayer('iran-events-layer', this.iranEvents, d => [d.longitude, d.latitude], { radiusMinPixels: 12 }));
     }

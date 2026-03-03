@@ -137,6 +137,11 @@ Sentry.init({
     /button\[aria-label/,
     /The fetching process for the media resource was aborted/,
     /Invalid regular expression: missing/,
+    /__sheets__.*darkRootSheet/,
+    /unreachable.*MessagePort/,
+    /appHotStart is not a function/,
+    /userScripts is not defined/,
+    /Can't find variable: video/,
     /WeixinJSBridge/,
     /evaluating 'e\.type'/,
     /Policy with name .* already exists/,
@@ -182,6 +187,10 @@ Sentry.init({
     if (frames.length > 0 && frames.every(f => /^blob:/.test(f.filename ?? ''))) return null;
     // Suppress YouTube IFrame widget API internal errors
     if (frames.some(f => /www-widgetapi\.js/.test(f.filename ?? ''))) return null;
+    // Suppress Ultraviolet web proxy errors (school/privacy bypass tool)
+    if (frames.some(f => /\/uv\//.test(f.filename ?? ''))) return null;
+    // Suppress errors from injected scripts (closeTabMediaModal, sortedTrackListForMenu, jsReceiveMessages)
+    if (frames.some(f => /sortedTrackListForMenu|closeTabMediaModal|jsReceiveMessages/.test(f.function ?? ''))) return null;
     return event;
   },
 });
