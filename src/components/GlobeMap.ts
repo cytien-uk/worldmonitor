@@ -20,7 +20,7 @@ import { INTEL_HOTSPOTS, CONFLICT_ZONES, GEOPOLITICAL_BOUNDARIES, MILITARY_BASES
 import { PIPELINES } from '@/config/pipelines';
 import { t } from '@/services/i18n';
 import { SITE_VARIANT } from '@/config/variant';
-import { getGlobeRenderScale, resolveGlobePixelRatio, subscribeGlobeRenderScaleChange } from '@/services/globe-render-settings';
+import { getGlobeRenderScale, resolveGlobePixelRatio, subscribeGlobeRenderScaleChange, type GlobeRenderScale } from '@/services/globe-render-settings';
 import { getLayersForVariant, resolveLayerLabel, type MapVariant } from '@/config/map-layer-definitions';
 import { resolveTradeRouteSegments, type TradeRouteSegment } from '@/config/trade-routes';
 import { GAMMA_IRRADIATORS } from '@/config/irradiators';
@@ -384,9 +384,9 @@ export class GlobeMap {
       return;
     }
 
-    const applyRenderQuality = () => {
+    const applyRenderQuality = (scale?: GlobeRenderScale) => {
       try {
-        const pr = resolveGlobePixelRatio(getGlobeRenderScale());
+        const pr = resolveGlobePixelRatio(scale ?? getGlobeRenderScale());
         const renderer = globe.renderer();
         renderer.setPixelRatio(pr);
         const w = this.container.clientWidth || window.innerWidth;
@@ -399,7 +399,7 @@ export class GlobeMap {
 
     applyRenderQuality();
     this.unsubscribeGlobeQuality?.();
-    this.unsubscribeGlobeQuality = subscribeGlobeRenderScaleChange(() => applyRenderQuality());
+    this.unsubscribeGlobeQuality = subscribeGlobeRenderScaleChange((scale) => applyRenderQuality(scale));
 
     // Initial sizing: use container dimensions, fall back to window if not yet laid out
     const initW = this.container.clientWidth || window.innerWidth;
