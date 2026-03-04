@@ -124,6 +124,48 @@ export function toRiskScores(resp: GetRiskScoresResponse): CachedRiskScores {
   };
 }
 
+// ---- Shape validator (localStorage is attacker-controlled) ----
+
+const VALID_LEVELS = new Set(['low', 'normal', 'elevated', 'high', 'critical']);
+
+function isValidCiiEntry(e: unknown): e is CachedCIIScore {
+  if (!e || typeof e !== 'object') return false;
+  const o = e as Record<string, unknown>;
+  return typeof o.code === 'string' && Number.isFinite(o.score) && VALID_LEVELS.has(o.level as string);
+}
+
+// ---- localStorage persistence (sync prime for getCachedScores) ----
+
+const LS_KEY = 'wm:risk-scores';
+const LS_MAX_STALENESS_MS = 24 * 60 * 60 * 1000;
+
+function loadFromStorage(): CachedRiskScores | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const { data, savedAt } = JSON.parse(raw);
+    if (!Number.isFinite(savedAt) || !Array.isArray(data?.cii)) {
+      localStorage.removeItem(LS_KEY);
+      return null;
+    }
+    if (Date.now() - savedAt > LS_MAX_STALENESS_MS) {
+      localStorage.removeItem(LS_KEY);
+      return null;
+    }
+    if (!data.cii.every(isValidCiiEntry)) {
+      localStorage.removeItem(LS_KEY);
+      return null;
+    }
+    return data;
+  } catch { return null; }
+}
+
+function saveToStorage(data: CachedRiskScores): void {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ data, savedAt: Date.now() }));
+  } catch { /* quota exceeded */ }
+}
+
 // ---- Circuit breaker ----
 
 const breaker = createCircuitBreaker<CachedRiskScores>({
@@ -131,6 +173,13 @@ const breaker = createCircuitBreaker<CachedRiskScores>({
   cacheTtlMs: 5 * 60 * 1000, // 5 min
   persistCache: true,
 });
+
+// Sync prime from localStorage (before async IndexedDB hydration)
+const stored = loadFromStorage();
+if (stored && stored.cii.length > 0) {
+  breaker.recordSuccess(stored);
+  setHasCachedScores(true);
+}
 
 function emptyFallback(): CachedRiskScores {
   return {
@@ -181,6 +230,7 @@ export async function fetchCachedRiskScores(signal?: AbortSignal): Promise<Cache
     if (hydrated?.ciiScores?.length) {
       const data = toRiskScores(hydrated);
       breaker.recordSuccess(data);
+      saveToStorage(data);
       setHasCachedScores(true);
       return data;
     }
@@ -191,6 +241,7 @@ export async function fetchCachedRiskScores(signal?: AbortSignal): Promise<Cache
     breaker.execute(async () => {
       const resp = await client.getRiskScores({ region: '' });
       const data = toRiskScores(resp);
+      saveToStorage(data);
       setHasCachedScores(true);
       return data;
     }, emptyFallback()),
