@@ -197,6 +197,8 @@ export class LiveWebcamsPanel extends Panel {
     viewGroup.appendChild(gridBtn);
     viewGroup.appendChild(singleBtn);
 
+    this.toolbar.appendChild(regionGroup);
+    this.toolbar.appendChild(viewGroup);
     this.element.insertBefore(this.toolbar, this.content);
   }
 

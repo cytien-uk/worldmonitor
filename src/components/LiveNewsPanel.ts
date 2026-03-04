@@ -532,6 +532,9 @@ export class LiveNewsPanel extends Panel {
         });
         this.idleDetectionEnabled = false;
       }
+      if (!document.hidden) {
+        this.resumeFromIdle();
+      }
       return;
     }
 
